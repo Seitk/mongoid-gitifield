@@ -1,4 +1,5 @@
 require 'mongoid/gitifield/version'
+require 'mongoid/gitifield/commander'
 require 'mongoid/gitifield/bundle'
 require 'mongoid/gitifield/workspace'
 

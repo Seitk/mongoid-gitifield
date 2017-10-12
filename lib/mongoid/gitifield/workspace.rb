@@ -11,7 +11,7 @@ module Mongoid
         @bundle = Bundle.new(data, workspace: self)
       end
 
-      def update(content)
+      def update(content, date: nil, user: nil)
         init_git_repo if @git.nil?
 
         file = File.open @path.join('content'), 'w'
@@ -19,11 +19,13 @@ module Mongoid
         file.fdatasync
         file.close
         @git.tap(&:add).commit_all('update')
+        Commander.exec("git commit --amend --no-edit --date=\"#{ date.strftime('%a %b %e %T %Y +0000') }\"", path: @path) if date.present?
+        Commander.exec("git commit --amend --no-edit --author=\"#{ user.name } <#{ user.email }>\"", path: @path) if date.present?
       rescue Git::GitExecuteError
         nil
       end
 
-      def init_git_repo
+      def init_git_repo(initial_commit: true)
         FileUtils::mkdir_p(@path)
         FileUtils.touch(@path.join('content'))
 
@@ -33,7 +35,7 @@ module Mongoid
         @git.config('user.email', 'ht.yu@me.com')
 
         begin
-          @git.tap(&:add).commit_all('initial commit') if new_repo
+          @git.tap(&:add).commit_all('initial commit') if new_repo && initial_commit
         rescue Git::GitExecuteError
           # Nothing to do (yet?)
         end
@@ -80,9 +82,7 @@ module Mongoid
         @git.apply_mail(file_path.to_s)
       rescue Git::GitExecuteError
         # In case of problem, abort applying
-        Dir.chdir(@path.to_s) do
-          system('git am --abort')
-        end
+        Commander.exec('git am --abort', path: @path)
       end
 
       def to_s
