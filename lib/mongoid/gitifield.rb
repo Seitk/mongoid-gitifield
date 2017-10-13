@@ -14,9 +14,12 @@ module Mongoid
 
     module ClassMethods
       name.constantize.class_variable_set(:@@_gitifields, [])
+      name.constantize.class_variable_set(:@@_state, {})
 
       def gitifields_on(fields = [])
         name.constantize.class_variable_set(:@@_gitifields, fields || [])
+        name.constantize.class_variable_set(:@@_state, {})
+        name.constantize.store[gitifield_tracking_key] = true
 
         include InstanceMethods
 
@@ -48,7 +51,11 @@ module Mongoid
       end
 
       def store
-        defined?(RequestStore) ? RequestStore.store : Thread.current
+        name.constantize.class_variable_get(:@@_state)
+      end
+
+      def store=(value)
+        name.constantize.class_variable_set(:@@_state, value)
       end
 
       def suspend_tracking(&_block)
@@ -61,12 +68,18 @@ module Mongoid
       def gitifield_tracking_key
         (GITIFIELD_TRACKING_FLAT % [name.underscore]).to_sym
       end
+
+      def tracking_enabled?
+        store[gitifield_tracking_key] == false
+      end
     end
 
     module InstanceMethods
       def create_gitifield_commit
+        return unless self.class.tracking_enabled?
+
         (self.class.gitifields || []).each do |field|
-          workspace = self.send((GITIFIELD_DATA_KEY % [field]).to_sym)
+          workspace = self.send((GITIFIELD_WORKSPACE_KEY % [field]).to_sym)
           workspace.update(self[field.to_sym])
           write_attribute((GITIFIELD_DATA_KEY % [field]).to_sym, workspace.to_s)
         end
