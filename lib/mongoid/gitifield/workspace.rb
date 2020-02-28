@@ -15,7 +15,7 @@ module Mongoid
         init_git_repo if @git.nil?
 
         file = File.open @path.join('content'), 'w'
-        file.puts content
+        file.write content
         file.fdatasync
         file.close
         @git.tap(&:add).commit_all('update')

@@ -70,7 +70,7 @@ module Mongoid
       end
 
       def tracking_enabled?
-        store[gitifield_tracking_key] == false
+        store[gitifield_tracking_key] == true
       end
     end
 
